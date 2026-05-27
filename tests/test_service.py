@@ -35,18 +35,23 @@ class FakeGenerator:
         )
 
 
-class FakeWeChat:
+class FakeNotifier:
     def __init__(self) -> None:
         self.sent: list[DailyBriefing] = []
 
-    def send_briefing(self, briefing: DailyBriefing) -> dict[str, int]:
+    def send_briefing(self, briefing: DailyBriefing) -> None:
         self.sent.append(briefing)
-        return {"errcode": 0}
 
 
-def make_settings(tmp_path) -> Settings:
+def make_settings(tmp_path, notifier: str = "email") -> Settings:
     return Settings(
         INTERVALS_API_KEY="intervals",
+        NOTIFIER=notifier,
+        EMAIL_SMTP_HOST="smtp.example.com",
+        EMAIL_SMTP_USER="user",
+        EMAIL_SMTP_PASSWORD="password",
+        EMAIL_FROM="from@example.com",
+        EMAIL_TO="to@example.com",
         WECHAT_APP_ID="appid",
         WECHAT_APP_SECRET="secret",
         WECHAT_TEMPLATE_ID="template",
@@ -55,35 +60,51 @@ def make_settings(tmp_path) -> Settings:
     )
 
 
-def test_daily_push_success_saves_snapshot_and_sends(tmp_path) -> None:
+def test_daily_push_success_saves_snapshot_and_sends_email(tmp_path) -> None:
     settings = make_settings(tmp_path)
     storage = Storage(settings.database_path)
-    wechat = FakeWeChat()
+    notifier = FakeNotifier()
     service = DailyPushService(
         settings,
         storage=storage,
         intervals_client=FakeIntervals(),
         briefing_generator=FakeGenerator(),
-        wechat_client=wechat,
+        email_client=notifier,
     )
 
     service.run_once(date(2026, 5, 27))
 
-    assert wechat.sent[0].training_summary == "Z2 / 60分钟"
+    assert notifier.sent[0].training_summary == "Z2 / 60分钟"
 
 
 def test_daily_push_sends_failure_notice_when_intervals_fails(tmp_path) -> None:
     settings = make_settings(tmp_path)
-    wechat = FakeWeChat()
+    notifier = FakeNotifier()
     service = DailyPushService(
         settings,
         storage=Storage(settings.database_path),
         intervals_client=FakeIntervals(fail=True),
         briefing_generator=FakeGenerator(),
-        wechat_client=wechat,
+        email_client=notifier,
     )
 
     service.run_once(date(2026, 5, 27))
 
-    assert wechat.sent[0].training_summary == "今日数据读取失败"
+    assert notifier.sent[0].training_summary == "今日数据读取失败"
+
+
+def test_daily_push_can_still_use_wechat_notifier(tmp_path) -> None:
+    settings = make_settings(tmp_path, notifier="wechat")
+    notifier = FakeNotifier()
+    service = DailyPushService(
+        settings,
+        storage=Storage(settings.database_path),
+        intervals_client=FakeIntervals(),
+        briefing_generator=FakeGenerator(),
+        wechat_client=notifier,
+    )
+
+    service.run_once(date(2026, 5, 27))
+
+    assert notifier.sent[0].training_summary == "Z2 / 60分钟"
 

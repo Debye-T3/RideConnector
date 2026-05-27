@@ -6,6 +6,7 @@ from zoneinfo import ZoneInfo
 
 from ride_connector.ai import BriefingGenerator
 from ride_connector.config import Settings
+from ride_connector.email_client import EmailClient
 from ride_connector.intervals_client import IntervalsClient
 from ride_connector.models import DailyBriefing
 from ride_connector.storage import Storage
@@ -21,6 +22,7 @@ class DailyPushService:
         storage: Storage | None = None,
         intervals_client: IntervalsClient | None = None,
         briefing_generator: BriefingGenerator | None = None,
+        email_client: EmailClient | None = None,
         wechat_client: WeChatClient | None = None,
     ) -> None:
         self.settings = settings
@@ -36,15 +38,30 @@ class DailyPushService:
             model=settings.openai_model,
             weight_loss_mode=settings.weight_loss_mode,
         )
-        self.wechat_client = wechat_client or WeChatClient(
-            app_id=settings.wechat_app_id,
-            app_secret=settings.wechat_app_secret,
-            template_id=settings.wechat_template_id,
-            openid=settings.wechat_openid,
-            field_map=settings.wechat_template_field_map,
-            storage=self.storage,
-            base_url=settings.wechat_base_url,
-        )
+        self.email_client = email_client
+        self.wechat_client = wechat_client
+
+        if settings.notifier == "email" and self.email_client is None:
+            self.email_client = EmailClient(
+                smtp_host=settings.email_smtp_host,
+                smtp_port=settings.email_smtp_port,
+                smtp_user=settings.email_smtp_user,
+                smtp_password=settings.email_smtp_password,
+                sender=settings.email_from,
+                recipient=settings.email_to,
+                use_tls=settings.email_use_tls,
+                use_ssl=settings.email_use_ssl,
+            )
+        if settings.notifier == "wechat" and self.wechat_client is None:
+            self.wechat_client = WeChatClient(
+                app_id=settings.wechat_app_id,
+                app_secret=settings.wechat_app_secret,
+                template_id=settings.wechat_template_id,
+                openid=settings.wechat_openid,
+                field_map=settings.wechat_template_field_map,
+                storage=self.storage,
+                base_url=settings.wechat_base_url,
+            )
 
     def run_once(self, run_date: date | None = None) -> None:
         target_date = run_date or date.today()
@@ -61,7 +78,7 @@ class DailyPushService:
                     training_advice="请稍后直接查看 Intervals.icu；今天训练以原计划和身体感受为准。",
                     nutrition_advice="饮食按常规骑行日处理：保证蛋白、蔬菜、饮水和必要碳水，避免因数据缺失临时极端节食。",
                 )
-                self.wechat_client.send_briefing(briefing)
+                self.send_briefing(briefing)
                 self.storage.log_push(target_date.isoformat(), "partial_failure", str(exc))
                 logger.exception("Intervals data fetch failed for %s", target_date.isoformat())
                 return
@@ -75,13 +92,26 @@ class DailyPushService:
                 },
             )
             briefing = self.briefing_generator.generate(target_date, events, wellness)
-            self.wechat_client.send_briefing(briefing)
+            self.send_briefing(briefing)
             self.storage.log_push(target_date.isoformat(), "success", "briefing sent")
             logger.info("Daily briefing sent for %s", target_date.isoformat())
         except Exception as exc:
             self.storage.log_push(target_date.isoformat(), "failure", str(exc))
             logger.exception("Daily briefing failed for %s", target_date.isoformat())
             raise
+
+    def send_briefing(self, briefing: DailyBriefing) -> None:
+        if self.settings.notifier == "email":
+            if self.email_client is None:
+                raise RuntimeError("Email notifier is not configured")
+            self.email_client.send_briefing(briefing)
+            return
+        if self.settings.notifier == "wechat":
+            if self.wechat_client is None:
+                raise RuntimeError("WeChat notifier is not configured")
+            self.wechat_client.send_briefing(briefing)
+            return
+        raise RuntimeError(f"Unsupported notifier: {self.settings.notifier}")
 
 
 def today_in_timezone(timezone: str) -> date:

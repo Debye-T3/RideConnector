@@ -13,6 +13,15 @@ jobs:
     env:
       INTERVALS_API_KEY: ${{ secrets.INTERVALS_API_KEY }}
       INTERVALS_ATHLETE_ID: ${{ secrets.INTERVALS_ATHLETE_ID || '0' }}
+      NOTIFIER: email
+      EMAIL_SMTP_HOST: ${{ secrets.EMAIL_SMTP_HOST }}
+      EMAIL_SMTP_PORT: ${{ secrets.EMAIL_SMTP_PORT || '587' }}
+      EMAIL_SMTP_USER: ${{ secrets.EMAIL_SMTP_USER }}
+      EMAIL_SMTP_PASSWORD: ${{ secrets.EMAIL_SMTP_PASSWORD }}
+      EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+      EMAIL_TO: ${{ secrets.EMAIL_TO }}
+      EMAIL_USE_TLS: ${{ secrets.EMAIL_USE_TLS || 'true' }}
+      EMAIL_USE_SSL: ${{ secrets.EMAIL_USE_SSL || 'false' }}
       WECHAT_APP_ID: ${{ secrets.WECHAT_APP_ID }}
       WECHAT_APP_SECRET: ${{ secrets.WECHAT_APP_SECRET }}
       WECHAT_TEMPLATE_ID: ${{ secrets.WECHAT_TEMPLATE_ID }}
@@ -39,4 +48,3 @@ jobs:
 
       - name: Send daily briefing
         run: python -m ride_connector.jobs.daily_push --once
-
