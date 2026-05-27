@@ -1,0 +1,42 @@
+name: Daily Ride Briefing
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 08:00 Asia/Shanghai is 00:00 UTC.
+    - cron: "0 0 * * *"
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      INTERVALS_API_KEY: ${{ secrets.INTERVALS_API_KEY }}
+      INTERVALS_ATHLETE_ID: ${{ secrets.INTERVALS_ATHLETE_ID || '0' }}
+      WECHAT_APP_ID: ${{ secrets.WECHAT_APP_ID }}
+      WECHAT_APP_SECRET: ${{ secrets.WECHAT_APP_SECRET }}
+      WECHAT_TEMPLATE_ID: ${{ secrets.WECHAT_TEMPLATE_ID }}
+      WECHAT_OPENID: ${{ secrets.WECHAT_OPENID }}
+      WECHAT_TEMPLATE_FIELD_MAP: ${{ secrets.WECHAT_TEMPLATE_FIELD_MAP }}
+      OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL || 'https://api.openai.com/v1' }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      OPENAI_MODEL: ${{ secrets.OPENAI_MODEL || 'gpt-4.1-mini' }}
+      TZ: Asia/Shanghai
+      WEIGHT_LOSS_MODE: "true"
+      DATABASE_PATH: data/ride_connector.sqlite3
+      LOG_LEVEL: INFO
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install package
+        run: python -m pip install .
+
+      - name: Send daily briefing
+        run: python -m ride_connector.jobs.daily_push --once
+
