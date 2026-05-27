@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import json
 from functools import lru_cache
-from typing import Any
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -30,10 +28,7 @@ class Settings(BaseSettings):
     wechat_template_id: str = Field(default="", alias="WECHAT_TEMPLATE_ID")
     wechat_openid: str = Field(default="", alias="WECHAT_OPENID")
     wechat_base_url: str = Field(default="https://api.weixin.qq.com", alias="WECHAT_BASE_URL")
-    wechat_template_field_map: dict[str, str] = Field(
-        default_factory=lambda: dict(DEFAULT_TEMPLATE_FIELD_MAP),
-        alias="WECHAT_TEMPLATE_FIELD_MAP",
-    )
+    wechat_template_field_map_raw: str = Field(default="", alias="WECHAT_TEMPLATE_FIELD_MAP")
 
     openai_base_url: str = Field(default="https://api.openai.com/v1", alias="OPENAI_BASE_URL")
     openai_api_key: str = Field(default="", alias="OPENAI_API_KEY")
@@ -56,23 +51,21 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
-    @field_validator("wechat_template_field_map", mode="before")
-    @classmethod
-    def parse_template_map(cls, value: Any) -> dict[str, str]:
-        if value in (None, ""):
-            return dict(DEFAULT_TEMPLATE_FIELD_MAP)
-        if isinstance(value, str):
-            parsed = json.loads(value)
-        else:
-            parsed = value
-        merged = dict(DEFAULT_TEMPLATE_FIELD_MAP)
-        merged.update({str(k): str(v) for k, v in parsed.items()})
-        return merged
-
     @field_validator("notifier")
     @classmethod
     def normalize_notifier(cls, value: str) -> str:
         return value.strip().lower()
+
+    @property
+    def wechat_template_field_map(self) -> dict[str, str]:
+        import json
+
+        if not self.wechat_template_field_map_raw.strip():
+            return dict(DEFAULT_TEMPLATE_FIELD_MAP)
+        parsed = json.loads(self.wechat_template_field_map_raw)
+        merged = dict(DEFAULT_TEMPLATE_FIELD_MAP)
+        merged.update({str(k): str(v) for k, v in parsed.items()})
+        return merged
 
     def validate_runtime(self) -> None:
         common = {"INTERVALS_API_KEY": self.intervals_api_key}
