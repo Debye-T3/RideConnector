@@ -62,9 +62,17 @@ class WellnessEntry:
 
     @classmethod
     def from_api(cls, raw: dict[str, Any]) -> "WellnessEntry":
-        raw_date = first_present(raw, "id", "date", "day")
+        raw_date = first_present(raw, "id", "date", "day", "localDate")
         parsed_date = date.fromisoformat(raw_date[:10]) if isinstance(raw_date, str) else None
-        sleep = first_present(raw, "sleep", "sleep_time", "sleep_secs", "sleep_seconds")
+        sleep = first_present(
+            raw,
+            "sleepSecs",
+            "sleep_seconds",
+            "sleep_secs",
+            "sleepTime",
+            "sleep_time",
+            "sleep",
+        )
         sleep_number = to_float(sleep)
         sleep_hours = None
         if sleep_number is not None:
@@ -72,9 +80,9 @@ class WellnessEntry:
         return cls(
             raw=raw,
             entry_date=parsed_date,
-            weight=to_float(first_present(raw, "weight", "weight_kg")),
+            weight=to_float(first_present(raw, "weight", "weightKg", "weight_kg")),
             resting_hr=to_float(first_present(raw, "restingHR", "resting_hr", "restingHeartRate")),
-            hrv=to_float(first_present(raw, "hrv", "hrv_rmssd")),
+            hrv=to_float(first_present(raw, "hrv", "hrvRMSSD", "hrv_rmssd", "hrvSDNN")),
             sleep_hours=sleep_hours,
             fatigue=to_float(first_present(raw, "fatigue")),
             soreness=to_float(first_present(raw, "soreness")),
@@ -88,4 +96,3 @@ class DailyBriefing:
     status_summary: str
     training_advice: str
     nutrition_advice: str
-

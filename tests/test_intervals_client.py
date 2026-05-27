@@ -3,6 +3,7 @@ from datetime import date
 import httpx
 
 from ride_connector.intervals_client import IntervalsClient
+from ride_connector.models import WellnessEntry
 
 
 def test_get_events_and_wellness_parse_flexible_payloads() -> None:
@@ -40,6 +41,13 @@ def test_get_events_and_wellness_parse_flexible_payloads() -> None:
     assert requests[0].url.params["oldest"] == "2026-05-27"
 
 
+def test_wellness_parses_intervals_sleep_secs_camel_case() -> None:
+    entry = WellnessEntry.from_api({"id": "2026-05-27", "weightKg": 77.6, "sleepSecs": 28800})
+
+    assert entry.weight == 77.6
+    assert entry.sleep_hours == 8
+
+
 def test_intervals_retries_three_times() -> None:
     attempts = 0
 
@@ -61,4 +69,3 @@ def test_intervals_retries_three_times() -> None:
         pass
 
     assert attempts == 3
-

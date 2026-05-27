@@ -24,14 +24,13 @@ def test_summarize_training_without_events() -> None:
     assert summarize_training([]) == "今日无计划训练"
 
 
-def test_status_includes_missing_fields_and_weight_trend() -> None:
+def test_status_uses_latest_available_weight_and_sleep_values() -> None:
     entries = [
         WellnessEntry.from_api({"id": "2026-05-20", "weight": 78.5}),
+        WellnessEntry.from_api({"id": "2026-05-26", "weight": 77.8, "sleepSecs": 25200}),
         WellnessEntry.from_api(
             {
                 "id": "2026-05-27",
-                "weight": 77.8,
-                "sleep": 5.5,
                 "restingHR": 68,
                 "hrv": 42,
                 "fatigue": 8,
@@ -42,8 +41,8 @@ def test_status_includes_missing_fields_and_weight_trend() -> None:
     summary = summarize_status(entries)
 
     assert "体重77.8kg" in summary
+    assert "睡眠7.0h" in summary
     assert "近周期体重下降0.7kg" in summary
-    assert "睡眠偏少" in summary
     assert "疲劳偏高" in summary
 
 

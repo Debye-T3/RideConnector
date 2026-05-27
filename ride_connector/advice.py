@@ -2,8 +2,11 @@ from __future__ import annotations
 
 from dataclasses import asdict
 from datetime import date
+from typing import TypeVar
 
 from ride_connector.models import DailyBriefing, TrainingEvent, WellnessEntry
+
+T = TypeVar("T")
 
 
 def summarize_training(events: list[TrainingEvent]) -> str:
@@ -27,18 +30,20 @@ def summarize_status(entries: list[WellnessEntry]) -> str:
     if not entries:
         return "近期生理状态未记录"
 
-    latest = sorted(
-        [entry for entry in entries if entry.entry_date is not None],
-        key=lambda entry: entry.entry_date,
-    )[-1] if any(entry.entry_date for entry in entries) else entries[-1]
+    sorted_entries = sort_entries(entries)
+    latest = sorted_entries[-1]
+    latest_weight = latest_value(sorted_entries, "weight")
+    latest_sleep = latest_value(sorted_entries, "sleep_hours")
+    latest_resting_hr = latest_value(sorted_entries, "resting_hr")
+    latest_hrv = latest_value(sorted_entries, "hrv")
 
     parts: list[str] = []
-    parts.append(f"体重{latest.weight:.1f}kg" if latest.weight else "体重未记录")
-    parts.append(f"睡眠{latest.sleep_hours:.1f}h" if latest.sleep_hours else "睡眠未记录")
-    parts.append(f"静息心率{latest.resting_hr:.0f}" if latest.resting_hr else "静息心率未记录")
-    parts.append(f"HRV {latest.hrv:.0f}" if latest.hrv else "HRV未记录")
+    parts.append(f"体重{latest_weight:.1f}kg" if latest_weight else "体重未记录")
+    parts.append(f"睡眠{latest_sleep:.1f}h" if latest_sleep else "睡眠未记录")
+    parts.append(f"静息心率{latest_resting_hr:.0f}" if latest_resting_hr else "静息心率未记录")
+    parts.append(f"HRV {latest_hrv:.0f}" if latest_hrv else "HRV未记录")
 
-    trend = weight_trend(entries)
+    trend = weight_trend(sorted_entries)
     if trend:
         parts.append(trend)
 
@@ -46,6 +51,21 @@ def summarize_status(entries: list[WellnessEntry]) -> str:
     if flags:
         parts.append("；".join(flags))
     return "，".join(parts)
+
+
+def sort_entries(entries: list[WellnessEntry]) -> list[WellnessEntry]:
+    dated = [entry for entry in entries if entry.entry_date is not None]
+    if dated:
+        return sorted(dated, key=lambda entry: entry.entry_date)
+    return entries
+
+
+def latest_value(entries: list[WellnessEntry], field_name: str) -> float | None:
+    for entry in reversed(entries):
+        value = getattr(entry, field_name)
+        if value is not None:
+            return value
+    return None
 
 
 def weight_trend(entries: list[WellnessEntry]) -> str | None:
@@ -73,7 +93,8 @@ def readiness_flags(entry: WellnessEntry) -> list[str]:
 
 
 def fallback_training_advice(events: list[TrainingEvent], wellness: list[WellnessEntry]) -> str:
-    latest = wellness[-1] if wellness else None
+    sorted_wellness = sort_entries(wellness)
+    latest = sorted_wellness[-1] if sorted_wellness else None
     flags = readiness_flags(latest) if latest else []
     if not events:
         return "今天适合恢复、轻松活动或完全休息，保持步行和拉伸即可。"
@@ -113,4 +134,3 @@ def compact_context(events: list[TrainingEvent], wellness: list[WellnessEntry]) 
         "training_events": [asdict(event) for event in events],
         "wellness_entries": [asdict(entry) for entry in wellness],
     }
-
