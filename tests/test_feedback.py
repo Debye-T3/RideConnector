@@ -52,6 +52,17 @@ def test_parse_issue_form_body_complete() -> None:
     assert feedback.checkin.research_pressure == 8
 
 
+def test_parse_issue_form_body_accepts_single_digit_month_and_day() -> None:
+    feedback = parse_issue_form_body(
+        """### date
+
+2026-5-8
+"""
+    )
+
+    assert feedback.feedback_date == date(2026, 5, 8)
+
+
 def test_parse_issue_form_body_allows_missing_weight() -> None:
     feedback = parse_issue_form_body(
         """### date

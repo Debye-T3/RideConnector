@@ -16,15 +16,13 @@ class DailyFeedback:
 
 
 HEADING_RE = re.compile(r"^###\s+(.+?)\s*$")
+DATE_RE = re.compile(r"^\s*(\d{4})-(\d{1,2})-(\d{1,2})\s*$")
 
 
 def parse_issue_form_body(body: str) -> DailyFeedback:
     fields = extract_issue_form_fields(body)
     date_text = require_field(fields, "date")
-    try:
-        feedback_date = date.fromisoformat(date_text[:10])
-    except ValueError as exc:
-        raise ValueError("date must be in YYYY-MM-DD format") from exc
+    feedback_date = parse_feedback_date(date_text)
 
     weight = parse_optional_float(fields.get("weight_kg", ""))
     return DailyFeedback(
@@ -105,3 +103,14 @@ def parse_optional_float(value: str) -> float | None:
 def empty_to_none(value: str) -> str | None:
     value = value.strip()
     return value or None
+
+
+def parse_feedback_date(value: str) -> date:
+    match = DATE_RE.match(value)
+    if not match:
+        raise ValueError("date must be in YYYY-MM-DD format")
+    year, month, day = (int(part) for part in match.groups())
+    try:
+        return date(year, month, day)
+    except ValueError as exc:
+        raise ValueError("date must be a valid calendar date") from exc

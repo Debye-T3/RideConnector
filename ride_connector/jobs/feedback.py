@@ -16,7 +16,9 @@ def main() -> None:
     settings = get_settings()
     configure_logging(settings.log_level)
     settings.validate_runtime()
-    FeedbackService(settings).handle_issue(args.issue_number)
+    succeeded = FeedbackService(settings).handle_issue_safely(args.issue_number)
+    if not succeeded:
+        return
     logging.getLogger(__name__).info("Processed feedback issue #%s", args.issue_number)
 
 

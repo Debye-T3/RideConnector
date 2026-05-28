@@ -68,6 +68,14 @@ class FeedbackService:
         )
         self.github_client.close_issue(issue_number)
 
+    def handle_issue_safely(self, issue_number: int) -> bool:
+        try:
+            self.handle_issue(issue_number)
+            return True
+        except Exception:
+            logger.exception("Feedback issue #%s failed", issue_number)
+            return False
+
     def process_feedback(self, feedback: DailyFeedback) -> None:
         if feedback.weight_kg is not None:
             self.intervals_client.update_wellness_weight(feedback.feedback_date, feedback.weight_kg)
