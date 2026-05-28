@@ -2,6 +2,7 @@ from datetime import date
 
 from ride_connector.advice import (
     build_fallback_briefing,
+    fallback_training_advice,
     summarize_status,
     summarize_training,
     weight_trend,
@@ -22,6 +23,23 @@ def test_summarize_training_with_multiple_events() -> None:
 
 def test_summarize_training_without_events() -> None:
     assert summarize_training([]) == "今日无计划训练"
+
+
+def test_no_plan_fallback_does_not_assign_training() -> None:
+    advice = fallback_training_advice([], [])
+
+    assert "不主动加练" in advice
+    assert "结构化骑行" in advice
+    assert "按计划完成" not in advice
+    assert "功率" not in advice
+    assert "Z1" not in advice
+    assert "Z2" not in advice
+
+
+def test_planned_training_fallback_still_gives_training_advice() -> None:
+    advice = fallback_training_advice([TrainingEvent.from_api({"name": "Z2", "duration": 3600})], [])
+
+    assert "按计划完成训练" in advice
 
 
 def test_status_uses_latest_available_weight_and_sleep_values() -> None:
@@ -54,6 +72,5 @@ def test_fallback_briefing_recovery_day_weight_loss() -> None:
     briefing = build_fallback_briefing(date(2026, 5, 27), [], [], weight_loss_mode=True)
 
     assert briefing.training_summary == "今日无计划训练"
-    assert "恢复" in briefing.training_advice
+    assert "不主动加练" in briefing.training_advice
     assert "轻微热量缺口" in briefing.nutrition_advice
-

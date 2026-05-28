@@ -2,11 +2,8 @@ from __future__ import annotations
 
 from dataclasses import asdict
 from datetime import date
-from typing import TypeVar
 
 from ride_connector.models import DailyBriefing, TrainingEvent, WellnessEntry
-
-T = TypeVar("T")
 
 
 def summarize_training(events: list[TrainingEvent]) -> str:
@@ -82,11 +79,11 @@ def weight_trend(entries: list[WellnessEntry]) -> str | None:
 def readiness_flags(entry: WellnessEntry) -> list[str]:
     flags: list[str] = []
     if entry.sleep_hours is not None and entry.sleep_hours < 6:
-        flags.append("睡眠偏少，训练中注意主观感受")
+        flags.append("睡眠偏少，今天避免硬顶")
     if entry.fatigue is not None and entry.fatigue >= 7:
-        flags.append("疲劳偏高，避免硬顶强度")
+        flags.append("疲劳偏高")
     if entry.soreness is not None and entry.soreness >= 7:
-        flags.append("酸痛偏高，充分热身")
+        flags.append("酸痛偏高")
     if entry.resting_hr is not None and entry.resting_hr >= 65:
         flags.append("静息心率偏高，留意恢复")
     return flags
@@ -97,7 +94,10 @@ def fallback_training_advice(events: list[TrainingEvent], wellness: list[Wellnes
     latest = sorted_wellness[-1] if sorted_wellness else None
     flags = readiness_flags(latest) if latest else []
     if not events:
-        return "今天适合恢复、轻松活动或完全休息，保持步行和拉伸即可。"
+        base = "今日无计划训练，不主动加练；优先恢复、睡眠和科研安排。"
+        if flags:
+            return f"{base}当前状态提示：{'；'.join(flags)}。轻松散步或拉伸只作为放松，不作为必须完成的训练。"
+        return f"{base}如有活动需求，仅保留轻松散步或拉伸，不安排结构化骑行。"
     if flags:
         return "按计划开始，但把体感放在第一位；若热身后仍疲劳，降低强度或缩短主课。"
     return "按计划完成训练，重点控制目标强度，不为追数据额外加量。"
@@ -110,8 +110,8 @@ def fallback_nutrition_advice(events: list[TrainingEvent], weight_loss_mode: boo
     if has_training:
         return "训练前补少量易消化碳水，训练后补蛋白和主食，注意补水与电解质。"
     if weight_loss_mode:
-        return "恢复日减少零食和含糖饮料，保证蛋白、蔬菜和饮水，维持轻微热量缺口。"
-    return "恢复日正常均衡饮食，优先蛋白、蔬菜和充足饮水。"
+        return "无计划训练日控制零食和含糖饮料，保证蛋白、蔬菜和饮水，维持轻微热量缺口。"
+    return "无计划训练日正常均衡饮食，优先蛋白、蔬菜和充足饮水。"
 
 
 def build_fallback_briefing(
