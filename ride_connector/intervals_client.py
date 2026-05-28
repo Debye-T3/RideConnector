@@ -45,6 +45,21 @@ class IntervalsClient:
         items = data if isinstance(data, list) else data.get("wellness", [])
         return [WellnessEntry.from_api(item) for item in items if isinstance(item, dict)]
 
+    def update_wellness(self, entry_date: date, payload: dict[str, Any]) -> dict[str, Any]:
+        data = self._retry(
+            lambda: self._client.put(
+                f"/athlete/{self.athlete_id}/wellness/{entry_date.isoformat()}",
+                json=payload,
+            )
+        )
+        return data if isinstance(data, dict) else {"result": data}
+
+    def update_wellness_weight(self, entry_date: date, weight_kg: float) -> dict[str, Any]:
+        existing_entries = self.get_wellness(entry_date, entry_date)
+        existing = dict(existing_entries[0].raw) if existing_entries else {"id": entry_date.isoformat()}
+        existing["weight"] = weight_kg
+        return self.update_wellness(entry_date, existing)
+
     @staticmethod
     def _retry(send: Callable[[], httpx.Response], attempts: int = 3) -> Any:
         last_error: Exception | None = None
@@ -52,8 +67,9 @@ class IntervalsClient:
             try:
                 response = send()
                 response.raise_for_status()
+                if not response.content:
+                    return {}
                 return response.json()
             except (httpx.HTTPError, ValueError) as exc:
                 last_error = exc
         raise RuntimeError(f"Intervals API request failed after {attempts} attempts") from last_error
-

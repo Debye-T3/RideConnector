@@ -178,6 +178,44 @@ DAILY_RESEARCH_PRESSURE
 DAILY_CHECKIN_NOTES
 ```
 
+## Feedback Loop / 反馈闭环
+
+The morning email includes a link to a GitHub Issue Form. After reading the first briefing, open
+that link and submit today's feedback. GitHub Actions will then:
+
+1. Parse your feedback issue.
+2. Write `weight_kg` back to the same day's Intervals.icu wellness record, if you filled it.
+3. Regenerate a second AI briefing in feedback mode.
+4. Send a new email titled `RideConnector 动态调整 YYYY-MM-DD`.
+5. Comment on and close the feedback issue when successful.
+
+晨报邮件中会包含一个 GitHub Issue Form 链接。你读完第一封晨报后，打开链接填写当天反馈。
+GitHub Actions 会自动：
+
+1. 解析你的反馈 issue。
+2. 如果填写了 `weight_kg`，把当天体重写回 Intervals.icu wellness。
+3. 使用 feedback 模式重新生成 AI 建议。
+4. 发送标题为 `RideConnector 动态调整 YYYY-MM-DD` 的第二封邮件。
+5. 成功后评论并关闭该反馈 issue。
+
+The feedback form fields are:
+
+反馈表单字段：
+
+- `date`: required, `YYYY-MM-DD`
+- `weight_kg`: optional, body weight in kg; this is the only field written back to Intervals.icu
+- `bedtime`: optional, for example `01:20`
+- `fatigue`: optional, subjective fatigue `1-10`
+- `soreness`: optional, leg soreness `1-10`
+- `research_pressure`: optional, research pressure `1-10`
+- `notes`: optional, symptoms, lab work, travel, or training constraints
+
+Only weight is written back to Intervals. Sleep, fatigue, soreness, research pressure, and notes
+are used by the AI coach for decision-making but are not written to Intervals in this version.
+
+目前只有体重会写回 Intervals。睡眠、疲劳、酸痛、科研压力和备注只用于 AI 决策，第一版不会写入
+Intervals。
+
 ## Optional WeChat Notifier / 可选微信推送
 
 WeChat code is still available. To use it, set:

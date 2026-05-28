@@ -42,6 +42,10 @@ class Settings(BaseSettings):
     daily_soreness: str = Field(default="", alias="DAILY_SORENESS")
     daily_research_pressure: str = Field(default="", alias="DAILY_RESEARCH_PRESSURE")
     daily_checkin_notes: str = Field(default="", alias="DAILY_CHECKIN_NOTES")
+    feedback_form_url: str = Field(default="", alias="FEEDBACK_FORM_URL")
+    github_repository: str = Field(default="", alias="GITHUB_REPOSITORY")
+    github_token: str = Field(default="", alias="GITHUB_TOKEN")
+    github_api_url: str = Field(default="https://api.github.com", alias="GITHUB_API_URL")
 
     notifier: str = Field(default="email", alias="NOTIFIER")
     email_smtp_host: str = Field(default="", alias="EMAIL_SMTP_HOST")
@@ -85,6 +89,17 @@ class Settings(BaseSettings):
             research_pressure=parse_score(self.daily_research_pressure),
             notes=self.daily_checkin_notes.strip() or None,
         )
+
+    @property
+    def resolved_feedback_form_url(self) -> str:
+        if self.feedback_form_url.strip():
+            return self.feedback_form_url.strip()
+        if self.github_repository.strip():
+            return (
+                f"https://github.com/{self.github_repository.strip()}/issues/new"
+                "?template=daily-feedback.yml"
+            )
+        return ""
 
     def validate_runtime(self) -> None:
         common = {"INTERVALS_API_KEY": self.intervals_api_key}

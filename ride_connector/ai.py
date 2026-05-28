@@ -32,24 +32,27 @@ class BriefingGenerator:
         events: list[TrainingEvent],
         wellness: list[WellnessEntry],
         daily_checkin: DailyCheckin | None = None,
+        mode: str = "morning",
     ) -> DailyBriefing:
         fallback = build_fallback_briefing(
             briefing_date, events, wellness, weight_loss_mode=self.weight_loss_mode
         )
+        fallback = apply_title_and_checkin(fallback, daily_checkin, mode)
         if not self.api_key:
-            return with_checkin_status(fallback, daily_checkin)
+            return fallback
 
         try:
-            payload = self._request_ai(briefing_date, events, wellness, daily_checkin)
+            payload = self._request_ai(briefing_date, events, wellness, daily_checkin, mode)
             return DailyBriefing(
                 briefing_date=briefing_date,
                 training_summary=summarize_training(events),
                 status_summary=merge_status_with_checkin(summarize_status(wellness), daily_checkin),
                 training_advice=payload.get("training_advice") or fallback.training_advice,
                 nutrition_advice=payload.get("nutrition_advice") or fallback.nutrition_advice,
+                title=title_for_mode(mode),
             )
         except Exception:
-            return with_checkin_status(fallback, daily_checkin)
+            return fallback
 
     def _request_ai(
         self,
@@ -57,17 +60,27 @@ class BriefingGenerator:
         events: list[TrainingEvent],
         wellness: list[WellnessEntry],
         daily_checkin: DailyCheckin | None,
+        mode: str,
     ) -> dict[str, str]:
         system = (
-            "你是周浩洋的自行车训练晨报教练。你的建议要直接、具体、像教练，不要空泛鼓励。"
-            "你可以根据长期个人画像、今日课表、Intervals wellness 数据和今日主观输入来做动态调整。"
+            "你是周浩洋的自行车训练晨报教练。建议要直接、具体、像教练，不要空泛鼓励。"
+            "你可以根据长期个人画像、今日课表、Intervals wellness 数据和今日主观反馈做动态调整。"
             "每次都要明确今天是否按计划执行、是否降级、建议功率或心率控制、时长、熔断条件、补给和饮食重点。"
             "不要给医疗诊断，不要鼓励带病硬顶，不要建议极端节食。"
             "如果数据缺失，要明确按缺失处理，不要编造。"
             "输出必须是 JSON object，只包含 training_advice 和 nutrition_advice 两个字符串字段。"
         )
+        if mode == "feedback":
+            mode_instruction = (
+                "这是收到当天主观反馈后的二次动态调整。请优先判断原训练计划是否需要改变，"
+                "给出更具体的执行方案、降级方案或取消训练条件。"
+            )
+        else:
+            mode_instruction = "这是早晨初始晨报。请基于课表和已知 wellness 给出当天初步建议。"
         user = {
             "date": briefing_date.isoformat(),
+            "mode": mode,
+            "mode_instruction": mode_instruction,
             "athlete_profile": self.athlete_profile or "未配置长期个人画像。",
             "daily_checkin": daily_checkin_to_dict(daily_checkin),
             "current_goal": "提升FTP和Z2稳定性，在不牺牲训练质量与科研恢复的前提下温和减脂。",
@@ -112,9 +125,10 @@ def daily_checkin_to_dict(daily_checkin: DailyCheckin | None) -> dict[str, objec
     }
 
 
-def with_checkin_status(
+def apply_title_and_checkin(
     briefing: DailyBriefing,
     daily_checkin: DailyCheckin | None,
+    mode: str,
 ) -> DailyBriefing:
     return DailyBriefing(
         briefing_date=briefing.briefing_date,
@@ -122,7 +136,13 @@ def with_checkin_status(
         status_summary=merge_status_with_checkin(briefing.status_summary, daily_checkin),
         training_advice=briefing.training_advice,
         nutrition_advice=briefing.nutrition_advice,
+        title=title_for_mode(mode),
+        feedback_url=briefing.feedback_url,
     )
+
+
+def title_for_mode(mode: str) -> str:
+    return "动态调整" if mode == "feedback" else "骑行晨报"
 
 
 def merge_status_with_checkin(status_summary: str, daily_checkin: DailyCheckin | None) -> str:

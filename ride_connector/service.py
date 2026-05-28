@@ -99,6 +99,16 @@ class DailyPushService:
                 wellness,
                 daily_checkin=self.settings.daily_checkin,
             )
+            if self.settings.resolved_feedback_form_url:
+                briefing = DailyBriefing(
+                    briefing_date=briefing.briefing_date,
+                    training_summary=briefing.training_summary,
+                    status_summary=briefing.status_summary,
+                    training_advice=briefing.training_advice,
+                    nutrition_advice=briefing.nutrition_advice,
+                    title=briefing.title,
+                    feedback_url=self.settings.resolved_feedback_form_url,
+                )
             self.send_briefing(briefing)
             self.storage.log_push(target_date.isoformat(), "success", "briefing sent")
             logger.info("Daily briefing sent for %s", target_date.isoformat())

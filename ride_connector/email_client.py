@@ -39,7 +39,7 @@ class EmailClient:
             smtp.sendmail(self.sender, [self.recipient], message.as_string())
 
     def build_message(self, briefing: DailyBriefing) -> MIMEMultipart:
-        subject = f"RideConnector 骑行晨报 {briefing.briefing_date.isoformat()}"
+        subject = f"RideConnector {briefing.title} {briefing.briefing_date.isoformat()}"
         message = MIMEMultipart("alternative")
         message["Subject"] = subject
         message["From"] = self.sender
@@ -50,16 +50,17 @@ class EmailClient:
 
     @staticmethod
     def build_text(briefing: DailyBriefing) -> str:
-        return "\n".join(
-            [
-                f"RideConnector 骑行晨报 {briefing.briefing_date.isoformat()}",
-                "",
-                f"今日训练：{briefing.training_summary}",
-                f"身体状态：{briefing.status_summary}",
-                f"训练建议：{briefing.training_advice}",
-                f"饮食补水：{briefing.nutrition_advice}",
-            ]
-        )
+        lines = [
+            f"RideConnector {briefing.title} {briefing.briefing_date.isoformat()}",
+            "",
+            f"今日训练：{briefing.training_summary}",
+            f"身体状态：{briefing.status_summary}",
+            f"训练建议：{briefing.training_advice}",
+            f"饮食补水：{briefing.nutrition_advice}",
+        ]
+        if briefing.feedback_url:
+            lines.extend(["", f"填写今日反馈并重新生成建议：{briefing.feedback_url}"])
+        return "\n".join(lines)
 
     @staticmethod
     def build_html(briefing: DailyBriefing) -> str:
@@ -73,6 +74,13 @@ class EmailClient:
             f"<tr><th>{html.escape(label)}</th><td>{html.escape(value)}</td></tr>"
             for label, value in rows
         )
+        feedback_html = ""
+        if briefing.feedback_url:
+            feedback_html = (
+                '<p class="action"><a href="'
+                + html.escape(briefing.feedback_url, quote=True)
+                + '">填写今日反馈并重新生成建议</a></p>'
+            )
         return f"""<!doctype html>
 <html lang="zh-CN">
 <head>
@@ -84,13 +92,15 @@ class EmailClient:
     table {{ width: 100%; border-collapse: collapse; }}
     th, td {{ padding: 12px; border-bottom: 1px solid #e5e7eb; vertical-align: top; text-align: left; }}
     th {{ width: 96px; color: #374151; background: #f9fafb; }}
+    .action a {{ display: inline-block; margin-top: 18px; padding: 10px 14px; color: #ffffff; background: #2563eb; border-radius: 6px; text-decoration: none; }}
     .note {{ margin-top: 16px; color: #6b7280; font-size: 13px; }}
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>RideConnector 骑行晨报 {html.escape(briefing.briefing_date.isoformat())}</h1>
+    <h1>RideConnector {html.escape(briefing.title)} {html.escape(briefing.briefing_date.isoformat())}</h1>
     <table>{rows_html}</table>
+    {feedback_html}
     <p class="note">建议仅供训练和营养安排参考，不替代医生、营养师或教练意见。</p>
   </div>
 </body>

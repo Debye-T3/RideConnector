@@ -1,6 +1,4 @@
-from datetime import date
-
-from ride_connector.ai import daily_checkin_to_dict, merge_status_with_checkin
+from ride_connector.ai import daily_checkin_to_dict, merge_status_with_checkin, title_for_mode
 from ride_connector.models import DailyCheckin
 
 
@@ -31,3 +29,7 @@ def test_merge_status_with_checkin_appends_summary() -> None:
     checkin = DailyCheckin(bedtime="01:20", fatigue=7)
 
     assert merge_status_with_checkin("体重77.5kg", checkin) == "体重77.5kg；主观输入：入睡时间01:20，主观疲劳7/10"
+
+
+def test_title_for_feedback_mode() -> None:
+    assert title_for_mode("feedback") == "动态调整"

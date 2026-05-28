@@ -1,34 +1,16 @@
-name: Daily Ride Briefing
+name: Daily Ride Feedback
 
 on:
-  workflow_dispatch:
-    inputs:
-      bedtime:
-        description: "Last night's bedtime, for example 00:30"
-        required: false
-        type: string
-      fatigue:
-        description: "Subjective fatigue 1-10"
-        required: false
-        type: string
-      soreness:
-        description: "Leg soreness 1-10"
-        required: false
-        type: string
-      research_pressure:
-        description: "Research pressure 1-10"
-        required: false
-        type: string
-      notes:
-        description: "Extra notes, such as cold symptoms, all-nighter, lab schedule"
-        required: false
-        type: string
-  schedule:
-    # 08:00 Asia/Shanghai is 00:00 UTC.
-    - cron: "0 0 * * *"
+  issues:
+    types: [opened, labeled]
+
+permissions:
+  contents: read
+  issues: write
 
 jobs:
-  push:
+  feedback:
+    if: contains(github.event.issue.labels.*.name, 'daily-feedback') || startsWith(github.event.issue.title, 'Daily feedback:')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
@@ -47,12 +29,8 @@ jobs:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       OPENAI_MODEL: ${{ secrets.OPENAI_MODEL || 'gpt-4.1-mini' }}
       ATHLETE_PROFILE: ${{ secrets.ATHLETE_PROFILE }}
+      GITHUB_TOKEN: ${{ github.token }}
       GITHUB_REPOSITORY: ${{ github.repository }}
-      DAILY_BEDTIME: ${{ github.event.inputs.bedtime || vars.DAILY_BEDTIME || '' }}
-      DAILY_FATIGUE: ${{ github.event.inputs.fatigue || vars.DAILY_FATIGUE || '' }}
-      DAILY_SORENESS: ${{ github.event.inputs.soreness || vars.DAILY_SORENESS || '' }}
-      DAILY_RESEARCH_PRESSURE: ${{ github.event.inputs.research_pressure || vars.DAILY_RESEARCH_PRESSURE || '' }}
-      DAILY_CHECKIN_NOTES: ${{ github.event.inputs.notes || vars.DAILY_CHECKIN_NOTES || '' }}
       TZ: Asia/Shanghai
       WEIGHT_LOSS_MODE: "true"
       DATABASE_PATH: data/ride_connector.sqlite3
@@ -69,5 +47,5 @@ jobs:
       - name: Install package
         run: python -m pip install .
 
-      - name: Send daily briefing
-        run: python -m ride_connector.jobs.daily_push --once
+      - name: Process feedback
+        run: python -m ride_connector.jobs.feedback --issue-number "${{ github.event.issue.number }}"

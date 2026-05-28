@@ -96,6 +96,8 @@ class DailyBriefing:
     status_summary: str
     training_advice: str
     nutrition_advice: str
+    title: str = "骑行晨报"
+    feedback_url: str | None = None
 
 
 @dataclass(frozen=True)

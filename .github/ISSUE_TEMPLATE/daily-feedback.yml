@@ -1,0 +1,61 @@
+name: Daily Ride Feedback
+description: Submit today's body metrics and subjective check-in for a revised RideConnector briefing.
+title: "Daily feedback: "
+labels: ["daily-feedback"]
+body:
+  - type: input
+    id: date
+    attributes:
+      label: date
+      description: Date for this feedback, in YYYY-MM-DD.
+      placeholder: "2026-05-28"
+    validations:
+      required: true
+  - type: input
+    id: weight_kg
+    attributes:
+      label: weight_kg
+      description: Today's body weight in kg. Leave blank if you do not want to update Intervals.
+      placeholder: "71.4"
+    validations:
+      required: false
+  - type: input
+    id: bedtime
+    attributes:
+      label: bedtime
+      description: Last night's bedtime.
+      placeholder: "01:20"
+    validations:
+      required: false
+  - type: input
+    id: fatigue
+    attributes:
+      label: fatigue
+      description: Subjective fatigue from 1 to 10.
+      placeholder: "6"
+    validations:
+      required: false
+  - type: input
+    id: soreness
+    attributes:
+      label: soreness
+      description: Leg soreness from 1 to 10.
+      placeholder: "4"
+    validations:
+      required: false
+  - type: input
+    id: research_pressure
+    attributes:
+      label: research_pressure
+      description: Research pressure from 1 to 10.
+      placeholder: "8"
+    validations:
+      required: false
+  - type: textarea
+    id: notes
+    attributes:
+      label: notes
+      description: Extra context such as cold symptoms, all-nighter, lab schedule, travel, or training constraints.
+      placeholder: "上午有实验，下午可能只能做短训练。"
+    validations:
+      required: false

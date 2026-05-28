@@ -69,3 +69,42 @@ def test_intervals_retries_three_times() -> None:
         pass
 
     assert attempts == 3
+
+
+def test_update_wellness_weight_merges_existing_payload() -> None:
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        if request.method == "GET":
+            return httpx.Response(
+                200,
+                json=[{"id": "2026-05-28", "sleepSecs": 28800, "restingHR": 49}],
+            )
+        if request.method == "PUT":
+            payload = json_from_request(request)
+            assert payload["id"] == "2026-05-28"
+            assert payload["sleepSecs"] == 28800
+            assert payload["restingHR"] == 49
+            assert payload["weight"] == 71.4
+            return httpx.Response(200, json=payload)
+        return httpx.Response(404)
+
+    client = httpx.Client(
+        base_url="https://intervals.test/api/v1",
+        auth=httpx.BasicAuth("API_KEY", "secret"),
+        transport=httpx.MockTransport(handler),
+    )
+    intervals = IntervalsClient("secret", client=client)
+
+    result = intervals.update_wellness_weight(date(2026, 5, 28), 71.4)
+
+    assert result["weight"] == 71.4
+    assert requests[1].method == "PUT"
+    assert requests[1].url.path.endswith("/athlete/0/wellness/2026-05-28")
+
+
+def json_from_request(request: httpx.Request) -> dict:
+    import json
+
+    return json.loads(request.content.decode("utf-8"))
