@@ -195,7 +195,7 @@ GitHub Actions 会自动：
 1. 解析你的反馈 issue。
 2. 如果填写了 `weight_kg`，把当天体重写回 Intervals.icu wellness。
 3. 使用 feedback 模式重新生成 AI 建议。
-4. 发送标题为 `RideConnector 动态调整 YYYY-MM-DD` 的第二封邮件。
+4. 仅在训练需要调整或健康/恢复风险明显时，发送标题为 `RideConnector 动态调整 YYYY-MM-DD` 的第二封邮件。
 5. 成功后评论并关闭该反馈 issue。
 
 The feedback form fields are:
@@ -215,6 +215,13 @@ are used by the AI coach for decision-making but are not written to Intervals in
 
 目前只有体重会写回 Intervals。睡眠、疲劳、酸痛、科研压力和备注只用于 AI 决策，第一版不会写入
 Intervals。
+
+Feedback is quiet by default. If your feedback does not require a training change and does not
+show a meaningful health or recovery risk, RideConnector will only comment on and close the issue;
+it will not send a second email.
+
+反馈默认静默处理。如果你的反馈不需要更改训练，也没有明显健康或恢复风险，RideConnector 只会在
+issue 中评论并关闭，不会发送第二封邮件。
 
 ## Optional WeChat Notifier / 可选微信推送
 

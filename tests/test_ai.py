@@ -7,6 +7,7 @@ from ride_connector.ai import (
     BriefingGenerator,
     daily_checkin_to_dict,
     merge_status_with_checkin,
+    parse_feedback_decision,
     title_for_mode,
     wants_extra_training,
 )
@@ -173,3 +174,24 @@ def test_ai_payload_marks_planned_training() -> None:
 
     user_payload = json.loads(seen_payload["messages"][1]["content"])
     assert user_payload["has_planned_training"] is True
+
+
+def test_parse_feedback_decision_defaults_to_no_email_when_missing() -> None:
+    decision = parse_feedback_decision({"training_advice": "按计划", "nutrition_advice": "正常吃"})
+
+    assert decision.should_send_email is False
+    assert decision.severity == "none"
+
+
+def test_parse_feedback_decision_reads_ai_alert() -> None:
+    decision = parse_feedback_decision(
+        {
+            "should_send_email": True,
+            "alert_reason": "需要降级",
+            "severity": "warning",
+        }
+    )
+
+    assert decision.should_send_email is True
+    assert decision.alert_reason == "需要降级"
+    assert decision.severity == "warning"

@@ -135,3 +135,10 @@ class DailyCheckin:
         if self.notes:
             parts.append(f"备注：{self.notes}")
         return "，".join(parts)
+
+
+@dataclass(frozen=True)
+class FeedbackDecision:
+    should_send_email: bool
+    alert_reason: str = ""
+    severity: str = "none"
