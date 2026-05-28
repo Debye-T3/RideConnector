@@ -37,6 +37,7 @@ class DailyPushService:
             api_key=settings.openai_api_key,
             model=settings.openai_model,
             weight_loss_mode=settings.weight_loss_mode,
+            athlete_profile=settings.athlete_profile,
         )
         self.email_client = email_client
         self.wechat_client = wechat_client
@@ -89,9 +90,15 @@ class DailyPushService:
                 {
                     "events": [event.raw for event in events],
                     "wellness": [entry.raw for entry in wellness],
+                    "daily_checkin": self.settings.daily_checkin.summary(),
                 },
             )
-            briefing = self.briefing_generator.generate(target_date, events, wellness)
+            briefing = self.briefing_generator.generate(
+                target_date,
+                events,
+                wellness,
+                daily_checkin=self.settings.daily_checkin,
+            )
             self.send_briefing(briefing)
             self.storage.log_push(target_date.isoformat(), "success", "briefing sent")
             logger.info("Daily briefing sent for %s", target_date.isoformat())

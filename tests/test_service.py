@@ -1,7 +1,7 @@
 from datetime import date
 
 from ride_connector.config import Settings
-from ride_connector.models import DailyBriefing, TrainingEvent, WellnessEntry
+from ride_connector.models import DailyBriefing, DailyCheckin, TrainingEvent, WellnessEntry
 from ride_connector.service import DailyPushService
 from ride_connector.storage import Storage
 
@@ -20,12 +20,17 @@ class FakeIntervals:
 
 
 class FakeGenerator:
+    def __init__(self) -> None:
+        self.daily_checkin: DailyCheckin | None = None
+
     def generate(
         self,
         briefing_date: date,
         events: list[TrainingEvent],
         wellness: list[WellnessEntry],
+        daily_checkin: DailyCheckin | None = None,
     ) -> DailyBriefing:
+        self.daily_checkin = daily_checkin
         return DailyBriefing(
             briefing_date=briefing_date,
             training_summary="Z2 / 60分钟",
@@ -56,25 +61,35 @@ def make_settings(tmp_path, notifier: str = "email") -> Settings:
         WECHAT_APP_SECRET="secret",
         WECHAT_TEMPLATE_ID="template",
         WECHAT_OPENID="openid",
+        ATHLETE_PROFILE="使用176W工作FTP，科研压力高时主动降级。",
+        DAILY_BEDTIME="01:20",
+        DAILY_FATIGUE="7",
+        DAILY_SORENESS="4",
+        DAILY_RESEARCH_PRESSURE="8",
+        DAILY_CHECKIN_NOTES="上午有实验",
         DATABASE_PATH=str(tmp_path / "test.sqlite3"),
     )
 
 
-def test_daily_push_success_saves_snapshot_and_sends_email(tmp_path) -> None:
+def test_daily_push_success_sends_email_and_passes_daily_checkin(tmp_path) -> None:
     settings = make_settings(tmp_path)
     storage = Storage(settings.database_path)
     notifier = FakeNotifier()
+    generator = FakeGenerator()
     service = DailyPushService(
         settings,
         storage=storage,
         intervals_client=FakeIntervals(),
-        briefing_generator=FakeGenerator(),
+        briefing_generator=generator,
         email_client=notifier,
     )
 
     service.run_once(date(2026, 5, 27))
 
     assert notifier.sent[0].training_summary == "Z2 / 60分钟"
+    assert generator.daily_checkin is not None
+    assert generator.daily_checkin.fatigue == 7
+    assert generator.daily_checkin.research_pressure == 8
 
 
 def test_daily_push_sends_failure_notice_when_intervals_fails(tmp_path) -> None:

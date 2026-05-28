@@ -5,6 +5,8 @@ from functools import lru_cache
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from ride_connector.models import DailyCheckin
+
 
 DEFAULT_TEMPLATE_FIELD_MAP = {
     "first": "first",
@@ -33,6 +35,13 @@ class Settings(BaseSettings):
     openai_base_url: str = Field(default="https://api.openai.com/v1", alias="OPENAI_BASE_URL")
     openai_api_key: str = Field(default="", alias="OPENAI_API_KEY")
     openai_model: str = Field(default="gpt-4.1-mini", alias="OPENAI_MODEL")
+    athlete_profile: str = Field(default="", alias="ATHLETE_PROFILE")
+
+    daily_bedtime: str = Field(default="", alias="DAILY_BEDTIME")
+    daily_fatigue: str = Field(default="", alias="DAILY_FATIGUE")
+    daily_soreness: str = Field(default="", alias="DAILY_SORENESS")
+    daily_research_pressure: str = Field(default="", alias="DAILY_RESEARCH_PRESSURE")
+    daily_checkin_notes: str = Field(default="", alias="DAILY_CHECKIN_NOTES")
 
     notifier: str = Field(default="email", alias="NOTIFIER")
     email_smtp_host: str = Field(default="", alias="EMAIL_SMTP_HOST")
@@ -67,6 +76,16 @@ class Settings(BaseSettings):
         merged.update({str(k): str(v) for k, v in parsed.items()})
         return merged
 
+    @property
+    def daily_checkin(self) -> DailyCheckin:
+        return DailyCheckin(
+            bedtime=self.daily_bedtime.strip() or None,
+            fatigue=parse_score(self.daily_fatigue),
+            soreness=parse_score(self.daily_soreness),
+            research_pressure=parse_score(self.daily_research_pressure),
+            notes=self.daily_checkin_notes.strip() or None,
+        )
+
     def validate_runtime(self) -> None:
         common = {"INTERVALS_API_KEY": self.intervals_api_key}
         if self.notifier == "email":
@@ -99,3 +118,13 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
+
+
+def parse_score(value: str) -> int | None:
+    value = value.strip()
+    if not value:
+        return None
+    score = int(value)
+    if score < 1 or score > 10:
+        raise ValueError("Daily check-in scores must be between 1 and 10")
+    return score

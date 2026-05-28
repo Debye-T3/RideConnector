@@ -96,3 +96,40 @@ class DailyBriefing:
     status_summary: str
     training_advice: str
     nutrition_advice: str
+
+
+@dataclass(frozen=True)
+class DailyCheckin:
+    bedtime: str | None = None
+    fatigue: int | None = None
+    soreness: int | None = None
+    research_pressure: int | None = None
+    notes: str | None = None
+
+    def has_any_value(self) -> bool:
+        return any(
+            value not in (None, "")
+            for value in (
+                self.bedtime,
+                self.fatigue,
+                self.soreness,
+                self.research_pressure,
+                self.notes,
+            )
+        )
+
+    def summary(self) -> str:
+        if not self.has_any_value():
+            return "今日主观输入未填写"
+        parts: list[str] = []
+        if self.bedtime:
+            parts.append(f"入睡时间{self.bedtime}")
+        if self.fatigue is not None:
+            parts.append(f"主观疲劳{self.fatigue}/10")
+        if self.soreness is not None:
+            parts.append(f"腿部酸痛{self.soreness}/10")
+        if self.research_pressure is not None:
+            parts.append(f"科研压力{self.research_pressure}/10")
+        if self.notes:
+            parts.append(f"备注：{self.notes}")
+        return "，".join(parts)

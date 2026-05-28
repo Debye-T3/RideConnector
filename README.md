@@ -121,6 +121,7 @@ Add these repository secrets in GitHub:
 - `EMAIL_FROM`
 - `EMAIL_TO`
 - `OPENAI_API_KEY`
+- `ATHLETE_PROFILE`
 
 Optional secrets:
 
@@ -135,6 +136,47 @@ Optional secrets:
 Do not commit real keys to the repository.
 
 不要把真实密钥提交到仓库。
+
+## Athlete Profile and Daily Check-in / 个人画像与每日输入
+
+Store your long-term training profile in the GitHub Secret `ATHLETE_PROFILE`. This should include
+your current working FTP, training goals, recovery rules, nutrition strategy, and how the AI coach
+should make decisions. Keep it private because it contains personal health and training context.
+
+请把长期个人骑行画像放进 GitHub Secret：`ATHLETE_PROFILE`。它应包含当前工作 FTP、训练目标、
+恢复判断规则、营养策略，以及 AI 教练每天应该如何决策。该内容包含个人训练和健康背景，建议作为
+Secret 保存，不要提交到公开仓库。
+
+Manual daily check-in is optional. When you click `Actions -> Daily Ride Briefing -> Run workflow`,
+GitHub will show these fields:
+
+每日主观输入是可选的。当你点击 `Actions -> Daily Ride Briefing -> Run workflow` 时，GitHub 会显示：
+
+- `bedtime`: last night's bedtime, for example `01:20`
+- `fatigue`: subjective fatigue `1-10`
+- `soreness`: leg soreness `1-10`
+- `research_pressure`: research pressure `1-10`
+- `notes`: extra notes, such as cold symptoms, all-nighter, lab work, or travel
+
+- `bedtime`：昨晚入睡时间，例如 `01:20`
+- `fatigue`：主观疲劳 `1-10`
+- `soreness`：腿部酸痛 `1-10`
+- `research_pressure`：科研压力 `1-10`
+- `notes`：其他备注，例如感冒、通宵、实验安排、出行等
+
+Scheduled runs at 08:00 Asia/Shanghai still work without manual input. If you want scheduled runs
+to always include a default check-in value, add GitHub repository Variables with these names:
+
+每天北京时间 08:00 的自动运行不需要填写这些输入。如果你希望定时运行也带默认主观输入，可以添加
+GitHub repository Variables：
+
+```text
+DAILY_BEDTIME
+DAILY_FATIGUE
+DAILY_SORENESS
+DAILY_RESEARCH_PRESSURE
+DAILY_CHECKIN_NOTES
+```
 
 ## Optional WeChat Notifier / 可选微信推送
 

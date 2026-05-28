@@ -2,6 +2,27 @@ name: Daily Ride Briefing
 
 on:
   workflow_dispatch:
+    inputs:
+      bedtime:
+        description: "昨晚入睡时间，例如 00:30"
+        required: false
+        type: string
+      fatigue:
+        description: "今日主观疲劳 1-10"
+        required: false
+        type: string
+      soreness:
+        description: "今日腿部酸痛 1-10"
+        required: false
+        type: string
+      research_pressure:
+        description: "今日科研压力 1-10"
+        required: false
+        type: string
+      notes:
+        description: "其他备注，例如感冒、通宵、实验安排"
+        required: false
+        type: string
   schedule:
     # 08:00 Asia/Shanghai is 00:00 UTC.
     - cron: "0 0 * * *"
@@ -25,6 +46,12 @@ jobs:
       OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL || 'https://api.openai.com/v1' }}
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       OPENAI_MODEL: ${{ secrets.OPENAI_MODEL || 'gpt-4.1-mini' }}
+      ATHLETE_PROFILE: ${{ secrets.ATHLETE_PROFILE }}
+      DAILY_BEDTIME: ${{ github.event.inputs.bedtime || vars.DAILY_BEDTIME || '' }}
+      DAILY_FATIGUE: ${{ github.event.inputs.fatigue || vars.DAILY_FATIGUE || '' }}
+      DAILY_SORENESS: ${{ github.event.inputs.soreness || vars.DAILY_SORENESS || '' }}
+      DAILY_RESEARCH_PRESSURE: ${{ github.event.inputs.research_pressure || vars.DAILY_RESEARCH_PRESSURE || '' }}
+      DAILY_CHECKIN_NOTES: ${{ github.event.inputs.notes || vars.DAILY_CHECKIN_NOTES || '' }}
       TZ: Asia/Shanghai
       WEIGHT_LOSS_MODE: "true"
       DATABASE_PATH: data/ride_connector.sqlite3
