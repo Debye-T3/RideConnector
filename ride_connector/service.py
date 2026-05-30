@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 import logging
+import time
 from datetime import date, timedelta
+from typing import Callable
 from zoneinfo import ZoneInfo
 
 from ride_connector.ai import BriefingGenerator
 from ride_connector.config import Settings
 from ride_connector.email_client import EmailClient
 from ride_connector.intervals_client import IntervalsClient
-from ride_connector.models import DailyBriefing
+from ride_connector.models import DailyBriefing, TrainingEvent, WellnessEntry
 from ride_connector.storage import Storage
 from ride_connector.wechat_client import WeChatClient
 
@@ -24,6 +26,7 @@ class DailyPushService:
         briefing_generator: BriefingGenerator | None = None,
         email_client: EmailClient | None = None,
         wechat_client: WeChatClient | None = None,
+        sleep_fn: Callable[[float], None] | None = None,
     ) -> None:
         self.settings = settings
         self.storage = storage or Storage(settings.database_path)
@@ -41,6 +44,7 @@ class DailyPushService:
         )
         self.email_client = email_client
         self.wechat_client = wechat_client
+        self.sleep_fn = sleep_fn or time.sleep
 
         if settings.notifier == "email" and self.email_client is None:
             self.email_client = EmailClient(
@@ -68,9 +72,7 @@ class DailyPushService:
         target_date = run_date or date.today()
         try:
             try:
-                events = self.intervals_client.get_events(target_date, target_date)
-                wellness_start = target_date - timedelta(days=13)
-                wellness = self.intervals_client.get_wellness(wellness_start, target_date)
+                events, wellness = self.fetch_daily_data(target_date)
             except Exception as exc:
                 briefing = DailyBriefing(
                     briefing_date=target_date,
@@ -117,6 +119,28 @@ class DailyPushService:
             logger.exception("Daily briefing failed for %s", target_date.isoformat())
             raise
 
+    def fetch_daily_data(
+        self, target_date: date
+    ) -> tuple[list[TrainingEvent], list[WellnessEntry]]:
+        wellness_start = target_date - timedelta(days=13)
+        attempts = self.settings.sleep_wait_attempts if self.settings.wait_for_sleep else 1
+        attempts = max(1, attempts)
+        events = []
+        wellness = []
+        for attempt in range(attempts):
+            events = self.intervals_client.get_events(target_date, target_date)
+            wellness = self.intervals_client.get_wellness(wellness_start, target_date)
+            if not self.settings.wait_for_sleep or has_today_sleep(wellness, target_date):
+                break
+            if attempt < attempts - 1:
+                logger.info(
+                    "Sleep data not available for %s; waiting %s seconds before retry",
+                    target_date.isoformat(),
+                    self.settings.sleep_poll_seconds,
+                )
+                self.sleep_fn(self.settings.sleep_poll_seconds)
+        return events, wellness
+
     def send_briefing(self, briefing: DailyBriefing) -> None:
         if self.settings.notifier == "email":
             if self.email_client is None:
@@ -135,3 +159,7 @@ def today_in_timezone(timezone: str) -> date:
     from datetime import datetime
 
     return datetime.now(ZoneInfo(timezone)).date()
+
+
+def has_today_sleep(wellness: list[WellnessEntry], target_date: date) -> bool:
+    return any(entry.entry_date == target_date and entry.sleep_hours is not None for entry in wellness)

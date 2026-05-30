@@ -59,6 +59,9 @@ class Settings(BaseSettings):
 
     timezone: str = Field(default="Asia/Shanghai", alias="TZ")
     weight_loss_mode: bool = Field(default=True, alias="WEIGHT_LOSS_MODE")
+    wait_for_sleep: bool = Field(default=False, alias="WAIT_FOR_SLEEP")
+    sleep_poll_seconds: int = Field(default=900, alias="SLEEP_POLL_SECONDS")
+    sleep_wait_attempts: int = Field(default=13, alias="SLEEP_WAIT_ATTEMPTS")
     database_path: str = Field(default="data/ride_connector.sqlite3", alias="DATABASE_PATH")
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
 

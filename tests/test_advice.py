@@ -49,6 +49,8 @@ def test_status_uses_latest_available_weight_and_sleep_values() -> None:
         WellnessEntry.from_api(
             {
                 "id": "2026-05-27",
+                "weight": 77.8,
+                "sleepSecs": 25200,
                 "restingHR": 68,
                 "hrv": 42,
                 "fatigue": 8,
@@ -56,7 +58,7 @@ def test_status_uses_latest_available_weight_and_sleep_values() -> None:
         ),
     ]
 
-    summary = summarize_status(entries)
+    summary = summarize_status(date(2026, 5, 27), entries)
 
     assert "体重77.8kg" in summary
     assert "睡眠7.0h" in summary
@@ -66,6 +68,31 @@ def test_status_uses_latest_available_weight_and_sleep_values() -> None:
 
 def test_weight_trend_requires_two_values() -> None:
     assert weight_trend([WellnessEntry.from_api({"id": "2026-05-27", "weight": 77.8})]) is None
+
+
+def test_status_uses_today_resting_hr_not_yesterday_value() -> None:
+    entries = [
+        WellnessEntry.from_api({"id": "2026-05-27", "restingHR": 58}),
+        WellnessEntry.from_api({"id": "2026-05-28", "restingHR": 47}),
+    ]
+
+    summary = summarize_status(date(2026, 5, 28), entries)
+
+    assert "47" in summary
+    assert "58" not in summary
+
+
+def test_status_does_not_fallback_to_old_resting_hr_when_today_missing() -> None:
+    entries = [
+        WellnessEntry.from_api({"id": "2026-05-27", "restingHR": 58, "fatigue": 8}),
+        WellnessEntry.from_api({"id": "2026-05-28", "weight": 71.4}),
+    ]
+
+    summary = summarize_status(date(2026, 5, 28), entries)
+
+    assert "58" not in summary
+    assert "未记录" in summary
+    assert "鐤插姵鍋忛珮" not in summary
 
 
 def test_fallback_briefing_recovery_day_weight_loss() -> None:

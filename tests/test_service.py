@@ -19,9 +19,26 @@ class FakeIntervals:
         return [WellnessEntry.from_api({"id": newest.isoformat(), "weight": 77.5})]
 
 
+class SleepPollingIntervals(FakeIntervals):
+    def __init__(self) -> None:
+        super().__init__()
+        self.wellness_calls = 0
+
+    def get_wellness(self, oldest: date, newest: date) -> list[WellnessEntry]:
+        self.wellness_calls += 1
+        if self.wellness_calls == 1:
+            return [WellnessEntry.from_api({"id": newest.isoformat(), "weight": 77.5})]
+        return [
+            WellnessEntry.from_api(
+                {"id": newest.isoformat(), "weight": 77.5, "sleepSecs": 25200}
+            )
+        ]
+
+
 class FakeGenerator:
     def __init__(self) -> None:
         self.daily_checkin: DailyCheckin | None = None
+        self.wellness: list[WellnessEntry] = []
 
     def generate(
         self,
@@ -31,6 +48,7 @@ class FakeGenerator:
         daily_checkin: DailyCheckin | None = None,
     ) -> DailyBriefing:
         self.daily_checkin = daily_checkin
+        self.wellness = wellness
         return DailyBriefing(
             briefing_date=briefing_date,
             training_summary="Z2 / 60分钟",
@@ -87,6 +105,28 @@ def test_daily_push_success_sends_email_and_passes_daily_checkin(tmp_path) -> No
     service.run_once(date(2026, 5, 27))
 
     assert notifier.sent[0].training_summary == "Z2 / 60分钟"
+
+
+def test_daily_push_waits_until_sleep_data_is_available(tmp_path) -> None:
+    settings = make_settings(tmp_path)
+    settings.wait_for_sleep = True
+    settings.sleep_poll_seconds = 0
+    settings.sleep_wait_attempts = 3
+    intervals = SleepPollingIntervals()
+    generator = FakeGenerator()
+    service = DailyPushService(
+        settings,
+        storage=Storage(settings.database_path),
+        intervals_client=intervals,
+        briefing_generator=generator,
+        email_client=FakeNotifier(),
+        sleep_fn=lambda _seconds: None,
+    )
+
+    service.run_once(date(2026, 5, 27))
+
+    assert intervals.wellness_calls == 2
+    assert generator.wellness[-1].sleep_hours == 7
     assert generator.daily_checkin is not None
     assert generator.daily_checkin.fatigue == 7
     assert generator.daily_checkin.research_pressure == 8
@@ -122,4 +162,3 @@ def test_daily_push_can_still_use_wechat_notifier(tmp_path) -> None:
     service.run_once(date(2026, 5, 27))
 
     assert notifier.sent[0].training_summary == "Z2 / 60分钟"
-

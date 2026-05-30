@@ -30,7 +30,7 @@ on:
 jobs:
   push:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 190
     env:
       INTERVALS_API_KEY: ${{ secrets.INTERVALS_API_KEY }}
       INTERVALS_ATHLETE_ID: ${{ secrets.INTERVALS_ATHLETE_ID || '0' }}
@@ -55,6 +55,9 @@ jobs:
       DAILY_CHECKIN_NOTES: ${{ github.event.inputs.notes || vars.DAILY_CHECKIN_NOTES || '' }}
       TZ: Asia/Shanghai
       WEIGHT_LOSS_MODE: "true"
+      WAIT_FOR_SLEEP: "true"
+      SLEEP_POLL_SECONDS: "900"
+      SLEEP_WAIT_ATTEMPTS: "13"
       DATABASE_PATH: data/ride_connector.sqlite3
       LOG_LEVEL: INFO
     steps:

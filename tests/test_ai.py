@@ -11,7 +11,7 @@ from ride_connector.ai import (
     title_for_mode,
     wants_extra_training,
 )
-from ride_connector.models import DailyCheckin, TrainingEvent
+from ride_connector.models import DailyCheckin, TrainingEvent, WellnessEntry
 
 
 def test_daily_checkin_to_dict_marks_empty_input() -> None:
@@ -174,6 +174,52 @@ def test_ai_payload_marks_planned_training() -> None:
 
     user_payload = json.loads(seen_payload["messages"][1]["content"])
     assert user_payload["has_planned_training"] is True
+
+
+def test_ai_payload_splits_today_wellness_from_history() -> None:
+    seen_payload: dict = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen_payload.update(json.loads(request.content.decode("utf-8")))
+        return httpx.Response(
+            200,
+            json={
+                "choices": [
+                    {
+                        "message": {
+                            "content": json.dumps(
+                                {
+                                    "training_advice": "按今天状态执行。",
+                                    "nutrition_advice": "正常补给。",
+                                },
+                                ensure_ascii=False,
+                            )
+                        }
+                    }
+                ]
+            },
+        )
+
+    generator = BriefingGenerator(
+        base_url="https://ai.test/v1",
+        api_key="key",
+        model="model",
+        client=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+
+    generator.generate(
+        date(2026, 5, 28),
+        [],
+        [
+            WellnessEntry.from_api({"id": "2026-05-27", "restingHR": 58}),
+            WellnessEntry.from_api({"id": "2026-05-28", "restingHR": 47}),
+        ],
+    )
+
+    user_payload = json.loads(seen_payload["messages"][1]["content"])
+    intervals_data = user_payload["intervals_data"]
+    assert intervals_data["today_wellness"]["resting_hr"] == 47
+    assert intervals_data["recent_wellness_history"][0]["resting_hr"] == 58
 
 
 def test_parse_feedback_decision_defaults_to_no_email_when_missing() -> None:

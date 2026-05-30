@@ -23,16 +23,16 @@ def summarize_training(events: list[TrainingEvent]) -> str:
     return "；".join(parts)
 
 
-def summarize_status(entries: list[WellnessEntry]) -> str:
+def summarize_status(briefing_date: date, entries: list[WellnessEntry]) -> str:
     if not entries:
         return "近期生理状态未记录"
 
     sorted_entries = sort_entries(entries)
-    latest = sorted_entries[-1]
-    latest_weight = latest_value(sorted_entries, "weight")
-    latest_sleep = latest_value(sorted_entries, "sleep_hours")
-    latest_resting_hr = latest_value(sorted_entries, "resting_hr")
-    latest_hrv = latest_value(sorted_entries, "hrv")
+    today = entry_for_date(sorted_entries, briefing_date)
+    latest_weight = today.weight if today else None
+    latest_sleep = today.sleep_hours if today else None
+    latest_resting_hr = today.resting_hr if today else None
+    latest_hrv = today.hrv if today else None
 
     parts: list[str] = []
     parts.append(f"体重{latest_weight:.1f}kg" if latest_weight else "体重未记录")
@@ -44,7 +44,7 @@ def summarize_status(entries: list[WellnessEntry]) -> str:
     if trend:
         parts.append(trend)
 
-    flags = readiness_flags(latest)
+    flags = readiness_flags(today) if today else []
     if flags:
         parts.append("；".join(flags))
     return "，".join(parts)
@@ -57,11 +57,10 @@ def sort_entries(entries: list[WellnessEntry]) -> list[WellnessEntry]:
     return entries
 
 
-def latest_value(entries: list[WellnessEntry], field_name: str) -> float | None:
+def entry_for_date(entries: list[WellnessEntry], target_date: date) -> WellnessEntry | None:
     for entry in reversed(entries):
-        value = getattr(entry, field_name)
-        if value is not None:
-            return value
+        if entry.entry_date == target_date:
+            return entry
     return None
 
 
@@ -123,14 +122,25 @@ def build_fallback_briefing(
     return DailyBriefing(
         briefing_date=briefing_date,
         training_summary=summarize_training(events),
-        status_summary=summarize_status(wellness),
+        status_summary=summarize_status(briefing_date, wellness),
         training_advice=fallback_training_advice(events, wellness),
         nutrition_advice=fallback_nutrition_advice(events, weight_loss_mode),
     )
 
 
-def compact_context(events: list[TrainingEvent], wellness: list[WellnessEntry]) -> dict[str, object]:
+def compact_context(
+    events: list[TrainingEvent],
+    wellness: list[WellnessEntry],
+    briefing_date: date | None = None,
+) -> dict[str, object]:
+    today_wellness = entry_for_date(wellness, briefing_date) if briefing_date else None
+    history = [
+        entry
+        for entry in wellness
+        if briefing_date is None or entry.entry_date != briefing_date
+    ]
     return {
         "training_events": [asdict(event) for event in events],
-        "wellness_entries": [asdict(entry) for entry in wellness],
+        "today_wellness": asdict(today_wellness) if today_wellness else None,
+        "recent_wellness_history": [asdict(entry) for entry in history],
     }

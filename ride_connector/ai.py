@@ -53,7 +53,9 @@ class BriefingGenerator:
             return DailyBriefing(
                 briefing_date=briefing_date,
                 training_summary=summarize_training(events),
-                status_summary=merge_status_with_checkin(summarize_status(wellness), daily_checkin),
+                status_summary=merge_status_with_checkin(
+                    summarize_status(briefing_date, wellness), daily_checkin
+                ),
                 training_advice=payload.get("training_advice") or fallback.training_advice,
                 nutrition_advice=payload.get("nutrition_advice") or fallback.nutrition_advice,
                 title=title_for_mode(mode),
@@ -80,6 +82,11 @@ class BriefingGenerator:
             "不要给医疗诊断，不要鼓励带病硬顶，不要建议极端节食。"
             "输出必须是 JSON object，包含 training_advice、nutrition_advice、should_send_email、alert_reason、severity。"
         )
+        system += (
+            " intervals_data.today_wellness is the only source for today's body status;"
+            " recent_wellness_history is historical context only and must not be presented"
+            " as today's resting HR, HRV, sleep, or weight."
+        )
         user = {
             "date": briefing_date.isoformat(),
             "mode": mode,
@@ -104,7 +111,7 @@ class BriefingGenerator:
             "athlete_profile": self.athlete_profile or "未配置长期个人画像。",
             "daily_checkin": daily_checkin_to_dict(daily_checkin),
             "current_goal": "提升FTP和Z2稳定性，在不牺牲训练质量与科研恢复的前提下温和减脂。",
-            "intervals_data": compact_context(events, wellness),
+            "intervals_data": compact_context(events, wellness, briefing_date),
         }
         response = self._client.post(
             f"{self.base_url}/chat/completions",
